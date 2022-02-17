@@ -2,9 +2,9 @@
 import {ctx} from "../canvas.js";
 
 export class GameObject {
-	constructor(w, h) {
-		this.x = 0;
-		this.y = 0;
+	constructor(w, h, x, y) {
+		this.x = x;
+		this.y = y;
 		this.width = w;
 		this.height = h;
 		this.color = 0;
@@ -13,10 +13,12 @@ export class GameObject {
         this.image = new Image();
         this.image.src = `/images/player.png`;
 		this.opacity = 1;
+        this.lastLocation = new Location(this.x, this.y);
 	}
 
 	update(elaspsedtime) {
-
+        this.lastLocation.x = this.x;
+        this.lastLocation.y = this.y;
 	}
 
 	render() {
@@ -36,11 +38,11 @@ export class GameObject {
         let myBounds = this.getBounds();
         let oBounds = o.getBounds();
         
-        if (myBounds.bottem <= oBounds.top) return false
-        if (myBounds.top >= oBounds.bottem) return false
-        if (myBounds.rightSide <= oBounds.leftSide) return false
-        if (myBounds.leftSide >= oBounds.rightSide) return false
-        return true;
+        if (myBounds.bottem <= oBounds.top) return undefined
+        if (myBounds.top >= oBounds.bottem) return undefined
+        if (myBounds.rightSide <= oBounds.leftSide) return undefined
+        if (myBounds.leftSide >= oBounds.rightSide) return undefined
+        return this.lastLocation;
     }
 }
 
@@ -50,5 +52,12 @@ class objectBoundries {
         this.bottem = y + h;
         this.leftSide = x;
         this.rightSide = x + w;
+    }
+}
+
+export class Location {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
     }
 }
