@@ -7,12 +7,8 @@ export class GameObject {
 		this.y = y;
 		this.width = w;
 		this.height = h;
-		this.color = 0;
-		this.sat = 100;
-		this.light = 50;
         this.image = new Image();
-        this.image.src = `/images/player.png`;
-		this.opacity = 1;
+        this.image.src = `/images/background.png`;
         this.lastLocation = new Location(this.x, this.y);
 	}
 

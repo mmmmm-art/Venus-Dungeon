@@ -1,9 +1,357 @@
 //@ts-check
 import { GameObject, Location } from "./game-objects/game-object.js";
 import { canvas, ctx } from "./canvas.js";
-import { level1, level2, level3 } from "./levels.js";
+import { level1, level10, level11, level12, level2, level3, level4, level5, level6, level7, level8, level9 } from "./levels.js";
+import { StartScene } from "./scenes/start.js";
+import { GameOverScene } from "./scenes/game-over.js";
+import { GameWonScene } from "./scenes/game-won.js";
+import { AudioPlayer } from "./audio.js";
 /** @type {HTMLCanvasElement} */
 //@ts-ignore
+
+export class Game {
+	/**
+	 * @param {Array<EnemyBullet>} EBullets
+	 * @param {Array<Bullet>} bullets
+	 * @param {Array<Blood>} blood
+	 * @param {Array<Bomb>} [bombs]
+	 */
+	constructor(EBullets, bullets, blood, bombs) {
+		this.EBullets = EBullets
+		this.bullets = bullets;
+		this.bombs = bombs;
+		this.blood = blood;
+		this.player = undefined;
+		this.walls = [];
+		this.monsters = [];
+		this.keys = [];
+		this.gold = [];
+		this.gunBlocks = [];
+		this.bosses = [];
+		this.lastShot = 0;
+		this.goal = undefined;
+		this.gameOver = false;
+		this.isLevelComp = false;
+		this.isLevelBack = false;
+		this.levels = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10, level11, level12];
+		this.currentLevel = 0;
+		this.money = 0;
+		this.gameObjects = [];
+		this.traps = [];
+		this.musicDisk = new AudioPlayer
+
+	}
+
+	init () {
+		let begin = new StartScene(this)
+		this.gameObjects = [begin];
+	}
+	reset() {
+		this.EBullets = EBullets
+		this.bullets = bullets;
+		this.bombs = bombs;
+		this.blood = blood;
+		this.player = undefined;
+		this.walls = [];
+		this.monsters = [];
+		this.keys = [];
+		this.gold = [];
+		this.gunBlocks = [];
+		this.bosses = [];
+		this.goal = undefined;
+		this.goalB = undefined;
+		this.gameObjects = [];
+		this.isLevelComp = false;
+		this.isLevelBack = false;
+		this.traps = [];
+	}
+	GameOver() {
+		this.gameOver = true;
+		let no = new GameOverScene(this);
+		this.gameObjects = [no];
+	}
+	GameWon() {
+		this.gameOver = true;
+		let won = new GameWonScene(this)
+		this.gameObjects = [won];
+	}
+	Start() {
+		this.musicDisk.init();
+		this.reset();
+		this.loadLevel();
+		requestAnimationFrame(gameLoop)
+	}
+	nextLevel() {
+		this.currentLevel ++;
+		this.reset();
+		this.loadLevel();
+	}
+	lastLevel() {
+		this.currentLevel -= 1;
+		this.reset();
+		this.loadLevel();
+	}
+	loadLevel() {
+
+		let level = this.levels[this.currentLevel]
+		let monsterCoords = [];
+		let playerCoords = { x: 0, y: 0 };
+		let goalCoords = { x: 0, y: 0 };
+		let goalBCoords = { x: -200, y: -200 };
+		
+		level.forEach((row, idx) => {
+			for (let col = 0; col < row.length; col++) {
+				let x = col * 16;
+				let y = idx * 16;
+				switch (row[col]) {
+					case "w":
+						this.walls.push(new Wall(x, y, 16, 16));
+						break;
+					case "m":
+						monsterCoords.push({ x: x, y: y });
+						break;
+					case "p":
+						playerCoords = { x: x, y: y };
+						break;
+					case "k":
+						this.keys.push(new Key(x, y));
+						break;
+					case "d":
+						this.walls.push(new Door(x, y, true));
+						break
+					case "D":
+						this.walls.push(new Door(x, y, false));
+						break
+					case "X":
+						goalCoords = { x: x, y: y };
+						break
+					case "x":
+						goalBCoords = { x: x, y: y };
+						break
+					case "B":
+						this.bosses.push(new Boss(x, y, this, true));
+						break
+					case "b":
+						this.bosses.push(new Boss(x, y, this, false));
+						break
+					case "g":
+						this.gold.push(new Gold(x, y, this))
+						break
+					case "G":
+						this.gunBlocks.push(new GunBlock(x, y))
+						break
+					case "t":
+						this.traps.push(new Trap(x, y, this));
+						break
+
+				}
+			}
+		});
+
+		this.player = new Player(this, playerCoords.x, playerCoords.y);
+		this.goal = new Goal(goalCoords.x, goalCoords.y, this);
+		this.goalB = new GoalBack(goalBCoords.x, goalBCoords.y, this);
+		monsterCoords.forEach((c) => {
+			this.monsters.push(new Monster(this, c.x, c.y));
+		});
+
+		this.gameObjects = [
+			...this.monsters,
+			...this.walls,		
+			...this.bullets, 
+			...this.EBullets,
+			...this.bombs,
+			this.player,
+			...this.keys, 
+			...this.bosses,
+			this.goal, 
+			...this.gold,
+			...this.gunBlocks,
+			...this.blood,
+			...this.traps
+			];
+	}
+
+	update(elaspsedtime) {
+		let time2Shoot1 = this.lastShot >= 0.2;
+		let time2Shoot2 = this.lastShot >= 0.7;
+		let time2Shoot3 = this.lastShot >= 0;
+		let time2Shoot4 = this.lastShot > 0.7;
+		let shot = this.player.shootR || this.player.shootL || this.player.shootU || this.player.shootD;
+		this.lastShot += elaspsedtime / 1000;
+		if(this.player.shootR && this.player.shotType1 && time2Shoot1)
+		{
+			this.bullets.push(new Bullet(1, 0, 300, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.lastShot = 0;
+		}
+		else if(this.player.shootL && this.player.shotType1 && time2Shoot1)
+		{
+			this.bullets.push(new Bullet(-1, 0, 300, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.lastShot = 0;
+		}
+		else if(this.player.shootU && this.player.shotType1 && time2Shoot1)
+		{
+			this.bullets.push(new Bullet(0, -1, 300, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.lastShot = 0;
+		}
+		else if(this.player.shootD && this.player.shotType1 && time2Shoot1)
+		{
+			this.bullets.push(new Bullet(0, 1, 300, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.lastShot = 0;
+		}
+
+		if(this.player.shootR && this.player.shotType4 && time2Shoot4)
+		{
+			this.bombs.push(new Bomb(1, 0, 300, this, bullets));
+			this.lastShot = 0;
+		}
+		else if(this.player.shootL && this.player.shotType4 && time2Shoot4)
+		{
+			this.bombs.push(new Bomb(-1, 0, 300, this, bullets));
+			this.lastShot = 0;
+		}
+		else if(this.player.shootU && this.player.shotType4 && time2Shoot4)
+		{
+			this.bombs.push(new Bomb(0, -1, 300, this, bullets));
+			this.lastShot = 0;
+		}
+		else if(this.player.shootD && this.player.shotType4 && time2Shoot4)
+		{
+			this.bombs.push(new Bomb(0, 1, 300, this, bullets));
+			this.lastShot = 0;
+		}
+
+		if(this.player.shootR && this.player.shotType2 && time2Shoot2)
+		{
+			this.bullets.push(new Bullet(1, -1, 150, 1.5, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, 1, 150, 1.5, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, -1, 150, 1, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, 1, 150, 1, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, 0, 150, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.lastShot = 0;
+		}
+		else if(this.player.shootL && this.player.shotType2 && time2Shoot2)
+		{
+			this.bullets.push(new Bullet(-1, -1, 150, 1.5, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(-1, 1, 150, 1.5, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(-1, -1, 150, 1, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(-1, 1, 150, 1, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(-1, 0, 150, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.lastShot = 0;
+		}
+		else if(this.player.shootU && this.player.shotType2 && time2Shoot2)
+		{
+			this.bullets.push(new Bullet(-1, -1, 150, 6, 1, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, -1, 150, 6, 1, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(-1, -1, 150, 6, 1.5, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, -1, 150, 6, 1.5, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(0, -1, 150, 6, 1.5, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.lastShot = 0;
+		}
+		else if(this.player.shootD && this.player.shotType2 && time2Shoot2)
+		{
+			this.bullets.push(new Bullet(-1, 1, 150, 6, 1, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, 1, 150, 6, 1, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(-1, 1, 150, 6, 1.5, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, 1, 150, 6, 1.5, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(0, 1, 150, 6, 1.5, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.lastShot = 0;
+		}
+
+		if(shot && this.player.shotType3 && time2Shoot3)
+		{
+			this.bullets.push(new Bullet(-1, -1, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, 1, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, 0, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(0, 1, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(-1, 0, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(0, -1, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(-1, 1, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, -1, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(-1, -1, 200, 12, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(-1, 1, 200, 6, 12, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, -1, 200, 12, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, 1, 200, 6, 12, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(-1, -1, 200, 3, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(-1, 1, 200, 6, 3, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, -1, 200, 3, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bullets.push(new Bullet(1, 1, 200, 6, 3, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+		}
+
+		if(this.player.shoot && !this.player.shot)
+		{
+			this.bombs.push(new Bomb(1, 1, 300, this, bullets));
+			this.bombs.push(new Bomb(1, -1, 300, this, bullets));
+			this.bombs.push(new Bomb(-1, 1, 300, this, bullets));
+			this.bombs.push(new Bomb(-1, -1, 300, this, bullets));
+			this.bombs.push(new Bomb(0, 1, 300, this, bullets));
+			this.bombs.push(new Bomb(0, -1, 300, this, bullets));
+			this.bombs.push(new Bomb(-1, 0, 300, this, bullets));
+			this.bombs.push(new Bomb(1, 0, 300, this, bullets));
+			this.player.shot = true;
+		}
+
+		this.bosses.forEach((b) => {
+			if(!b.isDead && !b.isBigBoi) {
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, -1, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, 1, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, 0, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 0, 1, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, 0, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 0, -1, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, 1, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, -1, 150, this, 0.3125, 0.15625, 2, 2));
+			}
+			else if (!b.isDead && b.isBigBoi)
+			{
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, -1, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, 1, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, 0, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 0, 1, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, 0, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 0, -1, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, 1, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, -1, 150, this, 0.3125, 0.15625, 2, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, -1, 150, this, 0.3125, 0.15625, 4, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, 1, 150, this, 0.3125, 0.15625, 2, 4));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, 1, 150, this, 0.3125, 0.15625, 4, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, -1, 150, this, 0.3125, 0.15625, 2, 4));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, -1, 150, this, 0.3125, 0.15625, 1, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, 1, 150, this, 0.3125, 0.15625, 2, 1));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, 1, 150, this, 0.3125, 0.15625, 1, 2));
+				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, -1, 150, this, 0.3125, 0.15625, 2, 1));
+			}
+		})
+
+		this.gunBlocks.forEach((g) => {
+			let d2 = 0.15625 * 100
+			let d1 = 0.3125 * 100
+			if(time2Shoot2)
+			{
+			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, 1, 0, 2000, this, d1, d2, 6, 6));
+			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, 0, 1, 2000, this, d1, d2, 6, 6));
+			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, -1, 0, 2000, this, d1, d2, 6, 6));
+			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, 0, -1, 2000, this, d1, d2, 6, 6));
+			this.lastShot = 0;
+			}
+		})
+
+	
+	}
+
+	render() {
+		ctx.save();
+		ctx.fillStyle = `hsla(50, 100%, 45%, 1)`;
+		ctx.strokeStyle = `hsla(60, 100%, 25%, 1)`;
+		ctx.font = "90px karma";
+		ctx.fillText(`Gold:${this.money}`, 0, canvas.height);
+		ctx.strokeText(`Gold:${this.money}`, 0, canvas.height);
+		ctx.restore();
+		
+	}
+
+
+}
 
 class Player extends GameObject {
 	/**
@@ -37,6 +385,7 @@ class Player extends GameObject {
 		this.boughtShot = false;
 		this.boughtShot2 = false;
 		this.boughtShot3 = false;
+		this.skin = 0;
 
 		this.wireUpEvents();
 	}
@@ -109,7 +458,7 @@ class Player extends GameObject {
 				this.shoot = toggleValue
 				break
 			case "4":
-				if(this.boughtShot3 || this.game.money >= 50) 
+				if(this.boughtShot3 || this.game.money >= 100) 
 				{
 					this.boughtShot3 = true
 					this.shotType1 = false;
@@ -119,7 +468,7 @@ class Player extends GameObject {
 				}
 				break
 			case "3":
-				if(this.boughtShot2 || this.game.money >= 25) 
+				if(this.boughtShot2 || this.game.money >= 50) 
 				{
 					this.boughtShot2 = true
 					this.shotType1 = false;
@@ -128,6 +477,13 @@ class Player extends GameObject {
 					this.shotType4 = true;
 				}
 				break
+			case "[":
+				this.skin += 3;
+				break
+			case "]":
+				this.skin -= 3;
+				break
+
 		}
 	}
 
@@ -136,9 +492,11 @@ class Player extends GameObject {
 	 */
 	update(elaspsedtime) {
 		let speedMultiplier = 1;
-
+		if(this.shotType3) { 
+			this.game.musicDisk.Never();
+		}
 		if (this.health <= 0) {
-			this.game.gameOver = true
+			this.game.GameOver();
 		}
 
 		if (this.isRunning && !this.isSneaking) {
@@ -185,12 +543,33 @@ class Player extends GameObject {
 				this.inventory.pop();
 				w.isLocked = false;
 				w.isOpen = true;
+				this.game.musicDisk.OpenDoor();
 				return;
 			}
 	
 			if (safeLocation) {
 				this.x = safeLocation.x;
 				this.y = safeLocation.y;
+			}
+		});
+
+		this.game.traps.forEach((w) => {
+			if(w.isOpen) return
+			let safeLocation = this.isColliding(w);
+			if (w.isLocked && this.inventory.length && safeLocation) 
+			{
+				this.inventory.pop();
+				w.isLocked = false;
+				w.isOpen = true;
+				return;
+			}
+	
+			if (safeLocation) {
+				this.x = safeLocation.x;
+				this.y = safeLocation.y;
+				this.health -= 10;
+				this.healthX += 5;
+				
 			}
 		});
 
@@ -208,6 +587,7 @@ class Player extends GameObject {
 			if(this.isColliding(k)) {
 				this.inventory.push(k);
 				k.isPicked = true;
+				this.game.musicDisk.PickKey();
 			}
 		});
 
@@ -221,6 +601,14 @@ class Player extends GameObject {
 		ctx.save();
 		ctx.fillStyle = "hsla(100, 100%, 50%, 1)";
 		ctx.fillRect(this.healthX, 10, this.health, 20);
+		ctx.restore();
+	}
+
+	render() {
+		ctx.save();
+        ctx.fillStyle = `hsla(${this.skin}, 100%, 50%, 1)`;
+		ctx.beginPath();
+		ctx.fillRect(this.x, this.y, this.width, this.height);
 		ctx.restore();
 	}
 }
@@ -276,6 +664,7 @@ class Monster extends GameObject {
 			this.game.blood.push(new Blood(this.x, this.y, -1, 0, Math.random() * 4, Math.random() * 4, Math.random() * 40 + 10, game))
 			this.x = 4000000;
 			this.y = 4000000;
+			this.game.money += 2;
 		}
 		this.movement.timeSinceLastUpdate += elaspsedtime;
 		if (this.movement.timeSinceLastUpdate >= this.movement.timeToNextUpdate || this.isLastMoveCollide) 
@@ -288,11 +677,11 @@ class Monster extends GameObject {
 			this.movement.timeSinceLastUpdate = 0;
 		}
 
-		if (game.player.isSneaking) 
+		if (this.game.player.isSneaking) 
 		{
 			this.senseDis = 50;
 		} 
-		else if (game.player.isRunning)
+		else if (this.game.player.isRunning)
 		{
 			this.senseDis = 200000000000
 		}
@@ -302,41 +691,41 @@ class Monster extends GameObject {
 		}
 
 		let insideX =
-		game.player.x > this.x - this.senseDis &&
-		game.player.x < this.x + this.senseDis;
+		this.game.player.x > this.x - this.senseDis &&
+		this.game.player.x < this.x + this.senseDis;
 		let insideY =
-		game.player.y > this.y - this.senseDis &&
-		game.player.y < this.y + this.senseDis;
+		this.game.player.y > this.y - this.senseDis &&
+		this.game.player.y < this.y + this.senseDis;
 		let isInside = insideX && insideY;
 
 
 		if (
-			game.player.x > this.x - this.senseDis &&
-			game.player.x < this.x &&
+			this.game.player.x > this.x - this.senseDis &&
+			this.game.player.x < this.x &&
 			isInside
 		) {
 			this.movement.x.direction = -1;
 			this.baseSpeed = 5;
 		}
 		if (
-			game.player.x < this.x + this.senseDis &&
-			game.player.x > this.x &&
+			this.game.player.x < this.x + this.senseDis &&
+			this.game.player.x > this.x &&
 			isInside
 		) {
 			this.movement.x.direction = 1;
 			this.baseSpeed = 5;
 		}
 		if (
-			game.player.y > this.y - this.senseDis &&
-			game.player.y < this.y &&
+			this.game.player.y > this.y - this.senseDis &&
+			this.game.player.y < this.y &&
 			isInside
 		) {
 			this.movement.y.direction = -1;
 			this.baseSpeed = 5;
 		}
 		if (
-			game.player.y < this.y + this.senseDis &&
-			game.player.y > this.y &&
+			this.game.player.y < this.y + this.senseDis &&
+			this.game.player.y > this.y &&
 			isInside
 		) {
 			this.movement.y.direction = 1;
@@ -360,9 +749,96 @@ class Monster extends GameObject {
 
 		if (this.game.player.isColliding(this))
 		{
-			game.player.health -= 5;
-			game.player.healthX += 2.5;
+			this.game.player.health -= 5;
+			this.game.player.healthX += 2.5;
 		}
+
+		super.update(elaspsedtime);
+	}
+
+	render() {
+		if(this.isDead) return
+
+		super.render();
+	}
+}
+
+class Boss extends GameObject {
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {Game} game
+	 * @param {Boolean} [isb]
+	 */
+	constructor(x, y, game, isb) {
+		super(32, 32, x, y)
+		this.game = game
+		this.baseSpeed = 3;
+		this.image.src = `/images/boss.png`;
+		this.senseDis = 150;
+		this.isLastMoveCollide = false;
+		this.isDead = false
+		this.movement = {
+			timeSinceLastUpdate: 0,
+			timeToNextUpdate: 1000,
+			x: {
+				direction: 0,
+				speed: this.baseSpeed,
+			},
+			y: {
+				direction: 0,
+				speed: this.baseSpeed,
+			},
+		};
+		this.health = 250;
+		this.isBigBoi = isb;
+	}
+
+	/**
+	 * @param {number} elaspsedtime
+	 */
+	update(elaspsedtime) {
+		if(this.isDead) return
+		this.movement.timeSinceLastUpdate += elaspsedtime;
+		if (this.movement.timeSinceLastUpdate >= this.movement.timeToNextUpdate || this.isLastMoveCollide) 
+		{
+			this.movement.x.direction = Math.random() >= 0.5 ? 1 : -1;
+			this.movement.y.direction = Math.random() >= 0.5 ? 1 : -1;
+			this.movement.x.speed = Math.random() * this.baseSpeed;
+			this.movement.y.speed = Math.random() * this.baseSpeed;
+			this.movement.timeToNextUpdate = Math.random() * 500 + 250;
+			this.movement.timeSinceLastUpdate = 0;
+		}
+
+		this.x += this.movement.x.speed * this.movement.x.direction;
+		this.y += this.movement.y.speed * this.movement.y.direction;
+
+		this.isLastMoveCollide = false;
+		this.game.walls.forEach((w) => {
+			if(w.isOpen) return
+			let safeLocation = this.isColliding(w);
+			if (safeLocation) {
+				this.isLastMoveCollide = true;
+				this.x = safeLocation.x;
+				this.y = safeLocation.y;
+			}
+		});
+
+		this.game.bullets.forEach((b) => {
+			let gotHit = this.isColliding(b)
+
+			if(gotHit)
+			{
+				this.health -= 3
+			}
+		});
+
+		if (this.health < 0)
+		{
+			this.game.money += 5;
+			this.isDead = true;
+		}
+
 
 		super.update(elaspsedtime);
 	}
@@ -385,137 +861,6 @@ class Wall extends GameObject {
 		super(w, h, x, y);
 		this.image.src = `/images/block.png`;
 	}
-}
-
-class Game {
-	/**
-	 * @param {Array<EnemyBullet>} EBullets
-	 * @param {Array<Bullet>} bullets
-	 * @param {Array<Blood>} blood
-	 * @param {Array<Bomb>} [bombs]
-	 */
-	constructor(EBullets, bullets, blood, bombs) {
-		this.EBullets = EBullets
-		this.bullets = bullets;
-		this.bombs = bombs;
-		this.blood = blood;
-		this.player = undefined;
-		this.walls = [];
-		this.monsters = [];
-		this.keys = [];
-		this.gold = [];
-		this.gunBlocks = [];
-		this.bosses = [];
-		this.goal = undefined;
-		this.gameOver = false;
-		this.isLevelComp = false;
-		this.levels = [level1, level2, level3];
-		this.currentLevel = 0;
-		this.money = 5000;
-		this.gameObjects = [];
-
-	}
-	start() {
-		this.loadLevel();
-		requestAnimationFrame(gameLoop)
-	}
-	nextLevel() {
-		this.currentLevel ++;
-		this.player = undefined;
-		this.walls = [];
-		this.monsters = [];
-		this.keys = [];
-		this.gold = [];
-		this.gunBlocks = [];
-		this.bosses = [];
-		this.goal = undefined;
-		this.gameObjects = [];
-		this.isLevelComp = false;
-		this.loadLevel();
-	}
-	loadLevel() {
-
-		let level = this.levels[this.currentLevel]
-		let monsterCoords = [];
-		let playerCoords = { x: 0, y: 0 };
-		let goalCoords = { x: 0, y: 0 };
-		
-		level.forEach((row, idx) => {
-			for (let col = 0; col < row.length; col++) {
-				let x = col * 16;
-				let y = idx * 16;
-				switch (row[col]) {
-					case "w":
-						this.walls.push(new Wall(x, y, 16, 16));
-						break;
-					case "m":
-						monsterCoords.push({ x: x, y: y });
-						break;
-					case "p":
-						playerCoords = { x: x, y: y };
-						break;
-					case "k":
-						this.keys.push(new Key(x, y));
-						break;
-					case "d":
-						this.walls.push(new Door(x, y, true));
-						break
-					case "D":
-						this.walls.push(new Door(x, y, false));
-						break
-					case "X":
-						goalCoords = { x: x, y: y };
-						break
-					case "B":
-						this.bosses.push(new Boss(x, y, this, true));
-						break
-					case "b":
-						this.bosses.push(new Boss(x, y, this, false));
-						break
-					case "g":
-						this.gold.push(new Gold(x, y, game))
-						break
-					case "G":
-						this.gunBlocks.push(new GunBlock(x, y))
-						break
-
-				}
-			}
-		});
-
-		this.player = new Player(this, playerCoords.x, playerCoords.y);
-		this.goal = new Goal(goalCoords.x, goalCoords.y, this);
-		monsterCoords.forEach((c) => {
-			this.monsters.push(new Monster(this, c.x, c.y));
-		});
-
-		this.gameObjects = [
-			...this.monsters,
-			...this.walls,		
-			...this.bullets, 
-			...this.EBullets,
-			...this.bombs,
-			this.player,
-			...this.keys, 
-			...this.bosses,
-			this.goal, 
-			...this.gold,
-			...this.gunBlocks,
-			...this.blood
-			];
-	}
-
-	render() {
-		ctx.save();
-		ctx.fillStyle = `hsla(50, 100%, 45%, 1)`;
-		ctx.strokeStyle = `hsla(60, 100%, 25%, 1)`;
-		ctx.font = "90px karma";
-		ctx.fillText(`Gold:${this.money}`, 0, canvas.height);
-		ctx.strokeText(`Gold:${this.money}`, 0, canvas.height);
-		ctx.restore();
-	}
-
-
 }
 
 class Key extends GameObject {
@@ -563,7 +908,58 @@ class Door extends GameObject {
 	}
 }
 
-class Bullet extends GameObject {
+class Goal extends GameObject {
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {Game} game
+	 */
+	constructor(x, y, game) {
+		super(32, 32, x, y)
+		this.game = game
+		this.image.src = `/images/goal.png`;
+	}
+
+	update(elaspsedtime) {
+		if (this.game.player.isColliding(this) && this.game.currentLevel < this.game.levels.length)
+		{
+			this.game.musicDisk.teleport();
+			this.game.player.shot = false;
+			this.game.isLevelComp = true;
+		}
+		else if (this.game.player.isColliding(this) && this.game.currentLevel > this.game.levels.length)
+		{
+			this.game.musicDisk.teleport();
+			this.game.GameWon();
+		}
+	}
+}
+
+class GoalBack extends GameObject {
+	 /**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {Game} game
+	 * @param {boolean} [id]
+	 */
+	 constructor(x, y, game, id) {
+		super(32, 32, x, y)
+		this.game = game
+		this.image.src = `/images/goal2.png`;
+		this.isDelayed = id
+	}
+
+	update(elaspsedtime) {
+		if (this.game.player.isColliding(this))
+		{
+			this.game.musicDisk.teleport();
+			this.game.player.shot = false;
+			this.game.isLevelBack = true;
+		}
+	}
+}
+
+class Bullet extends GameObject {	
 	/**
 	 * @param {number} xd
 	 * @param {number} yd
@@ -595,7 +991,12 @@ class Bullet extends GameObject {
 	}
 
 	update(elaspsedtime) {
-		if(this.dead) return
+		if(this.dead)
+		{
+			this.x = 4000000;
+			this.y = 4000000;
+			return
+		}
 		this.x += this.movement.x.speed * this.movement.x.direction;
 		this.y += this.movement.y.speed * this.movement.y.direction;
 		if(this.x > this.originalX + this.distance)
@@ -675,7 +1076,7 @@ class EnemyBullet extends GameObject {
 		};
 		this.dead = false;
 		this.distance = dd;
-		this.isBad = true
+		this.delay = 0
 	}
 
 	/**
@@ -712,8 +1113,8 @@ class EnemyBullet extends GameObject {
 
 		if(this.game.player.isColliding(this))
 		{
-			game.player.health -= this.d1;
-			game.player.healthX += this.d2;
+			this.game.player.health -= this.d1;
+			this.game.player.healthX += this.d2;
 		}
 	}
 
@@ -726,294 +1127,6 @@ class EnemyBullet extends GameObject {
 	
 }
 
-class BulletMan {
-	
-	/**
-	 * @param {Game} game
-	 * @param {Array<Bullet>} bullets
-	 * @param {Array<EnemyBullet>} EBullets
-	 * @param {Array<GunBlock>} gunBlocks
-	 * @param {Array<Bomb>} bombs
-	 */
-	constructor(game, bullets, EBullets, gunBlocks, bombs) {
-		this.game = game
-		this.bombs = bombs;
-		this.gunBlocks = gunBlocks
-		this.EBullets = EBullets;
-		this.bullets = bullets;
-		this.lastShot = 0;
-	}
-
-	/**
-	 * @param {number} elaspsedtime
-	 */
-	update(elaspsedtime) {
-		let time2Shoot1 = this.lastShot >= 0.2;
-		let time2Shoot2 = this.lastShot >= 0.7;
-		let time2Shoot3 = this.lastShot >= 0;
-		let time2Shoot4 = this.lastShot > 0.7;
-		let shot = this.game.player.shootR || this.game.player.shootL || this.game.player.shootU || this.game.player.shootD;
-		this.lastShot += elaspsedtime / 1000;
-		if(this.game.player.shootR && this.game.player.shotType1 && time2Shoot1)
-		{
-			this.bullets.push(new Bullet(1, 0, 300, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.lastShot = 0;
-		}
-		else if(this.game.player.shootL && this.game.player.shotType1 && time2Shoot1)
-		{
-			this.bullets.push(new Bullet(-1, 0, 300, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.lastShot = 0;
-		}
-		else if(this.game.player.shootU && this.game.player.shotType1 && time2Shoot1)
-		{
-			this.bullets.push(new Bullet(0, -1, 300, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.lastShot = 0;
-		}
-		else if(this.game.player.shootD && this.game.player.shotType1 && time2Shoot1)
-		{
-			this.bullets.push(new Bullet(0, 1, 300, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.lastShot = 0;
-		}
-
-		if(this.game.player.shootR && this.game.player.shotType4 && time2Shoot4)
-		{
-			this.bombs.push(new Bomb(1, 0, 300, game, bullets));
-			this.lastShot = 0;
-		}
-		else if(this.game.player.shootL && this.game.player.shotType4 && time2Shoot4)
-		{
-			this.bombs.push(new Bomb(-1, 0, 300, game, bullets));
-			this.lastShot = 0;
-		}
-		else if(this.game.player.shootU && this.game.player.shotType4 && time2Shoot4)
-		{
-			this.bombs.push(new Bomb(0, -1, 300, game, bullets));
-			this.lastShot = 0;
-		}
-		else if(this.game.player.shootD && this.game.player.shotType4 && time2Shoot4)
-		{
-			this.bombs.push(new Bomb(0, 1, 300, game, bullets));
-			this.lastShot = 0;
-		}
-
-		if(this.game.player.shootR && this.game.player.shotType2 && time2Shoot2)
-		{
-			this.bullets.push(new Bullet(1, 0, 150, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(1, -1, 150, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(1, 1, 150, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.lastShot = 0;
-		}
-		else if(this.game.player.shootL && this.game.player.shotType2 && time2Shoot2)
-		{
-			this.bullets.push(new Bullet(-1, 0, 150, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(-1, -1, 150, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(-1, 1, 150, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.lastShot = 0;
-		}
-		else if(this.game.player.shootU && this.game.player.shotType2 && time2Shoot2)
-		{
-			this.bullets.push(new Bullet(-1, -1, 150, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(0, -1, 150, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(1, -1, 150, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.lastShot = 0;
-		}
-		else if(this.game.player.shootD && this.game.player.shotType2 && time2Shoot2)
-		{
-			this.bullets.push(new Bullet(-1, 1, 150, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(0, 1, 150, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(1, 1, 150, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.lastShot = 0;
-		}
-
-		if(shot && game.player.shotType3 && time2Shoot3)
-		{
-			this.bullets.push(new Bullet(-1, -1, 200, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(1, 1, 200, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(1, 0, 200, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(0, 1, 200, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(-1, 0, 200, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(0, -1, 200, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(-1, 1, 200, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(1, -1, 200, 6, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(-1, -1, 200, 12, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(-1, 1, 200, 6, 12, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(1, -1, 200, 12, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(1, 1, 200, 6, 12, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(-1, -1, 200, 3, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(-1, 1, 200, 6, 3, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(1, -1, 200, 3, 6, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-			this.bullets.push(new Bullet(1, 1, 200, 6, 3, this.game, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3));
-		}
-
-		if(game.player.shoot && !game.player.shot)
-		{
-			this.bombs.push(new Bomb(1, 1, 300, game, bullets));
-			this.bombs.push(new Bomb(1, -1, 300, game, bullets));
-			this.bombs.push(new Bomb(-1, 1, 300, game, bullets));
-			this.bombs.push(new Bomb(-1, -1, 300, game, bullets));
-			this.bombs.push(new Bomb(0, 1, 300, game, bullets));
-			this.bombs.push(new Bomb(0, -1, 300, game, bullets));
-			this.bombs.push(new Bomb(-1, 0, 300, game, bullets));
-			this.bombs.push(new Bomb(1, 0, 300, game, bullets));
-			game.player.shot = true;
-		}
-
-		this.game.bosses.forEach((b) => {
-			if(!b.isDead && !b.isBigBoi) {
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, -1, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, 1, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, 0, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 0, 1, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, 0, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 0, -1, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, 1, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, -1, 150, this.game, 0.3125, 0.15625, 2, 2));
-			}
-			else if (!b.isDead && b.isBigBoi)
-			{
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, -1, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, 1, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, 0, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 0, 1, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, 0, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 0, -1, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, 1, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, -1, 150, this.game, 0.3125, 0.15625, 2, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, -1, 150, this.game, 0.3125, 0.15625, 4, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, 1, 150, this.game, 0.3125, 0.15625, 2, 4));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, 1, 150, this.game, 0.3125, 0.15625, 4, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, -1, 150, this.game, 0.3125, 0.15625, 2, 4));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, -1, 150, this.game, 0.3125, 0.15625, 1, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, 1, 150, this.game, 0.3125, 0.15625, 2, 1));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, -1, 1, 150, this.game, 0.3125, 0.15625, 1, 2));
-				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, -1, 150, this.game, 0.3125, 0.15625, 2, 1));
-			}
-		})
-
-		this.game.gunBlocks.forEach((g) => {
-			let d2 = 0.15625 * 100
-			let d1 = 0.3125 * 100
-			if(time2Shoot2)
-			{
-			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, 1, 0, 150, this.game, d1, d2, 6, 6));
-			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, 0, 1, 150, this.game, d1, d2, 6, 6));
-			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, -1, 0, 150, this.game, d1, d2, 6, 6));
-			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, 0, -1, 150, this.game, d1, d2, 6, 6));
-			this.lastShot = 0;
-			}
-		})
-
-		
-	}
-}
-
-class Boss extends GameObject {
-	/**
-	 * @param {number} x
-	 * @param {number} y
-	 * @param {Game} game
-	 * @param {Boolean} [isb]
-	 */
-	constructor(x, y, game, isb) {
-		super(32, 32, x, y)
-		this.game = game
-		this.baseSpeed = 3;
-		this.image.src = `/images/boss.png`;
-		this.senseDis = 150;
-		this.isLastMoveCollide = false;
-		this.isDead = false
-		this.movement = {
-			timeSinceLastUpdate: 0,
-			timeToNextUpdate: 1000,
-			x: {
-				direction: 0,
-				speed: this.baseSpeed,
-			},
-			y: {
-				direction: 0,
-				speed: this.baseSpeed,
-			},
-		};
-		this.health = 250;
-		this.isBigBoi = isb;
-	}
-
-	/**
-	 * @param {number} elaspsedtime
-	 */
-	update(elaspsedtime) {
-		if(this.isDead) return
-		this.movement.timeSinceLastUpdate += elaspsedtime;
-		if (this.movement.timeSinceLastUpdate >= this.movement.timeToNextUpdate || this.isLastMoveCollide) 
-		{
-			this.movement.x.direction = Math.random() >= 0.5 ? 1 : -1;
-			this.movement.y.direction = Math.random() >= 0.5 ? 1 : -1;
-			this.movement.x.speed = Math.random() * this.baseSpeed;
-			this.movement.y.speed = Math.random() * this.baseSpeed;
-			this.movement.timeToNextUpdate = Math.random() * 500 + 250;
-			this.movement.timeSinceLastUpdate = 0;
-		}
-
-		this.x += this.movement.x.speed * this.movement.x.direction;
-		this.y += this.movement.y.speed * this.movement.y.direction;
-
-		this.isLastMoveCollide = false;
-		this.game.walls.forEach((w) => {
-			if(w.isOpen) return
-			let safeLocation = this.isColliding(w);
-			if (safeLocation) {
-				this.isLastMoveCollide = true;
-				this.x = safeLocation.x;
-				this.y = safeLocation.y;
-			}
-		});
-
-		this.game.bullets.forEach((b) => {
-			let gotHit = this.isColliding(b)
-
-			if(gotHit)
-			{
-				this.health -= 3
-			}
-		});
-
-		if (this.health < 0)
-		{
-			this.isDead = true;
-		}
-
-
-		super.update(elaspsedtime);
-	}
-
-	render() {
-		if(this.isDead) return
-
-		super.render();
-	}
-}
-
-class Goal extends GameObject {
-	/**
-	 * @param {number} x
-	 * @param {number} y
-	 * @param {Game} game
-	 */
-	constructor(x, y, game) {
-		super(32, 32, x, y)
-		this.game = game
-		this.image.src = `/images/goal.png`;
-	}
-
-	update(elaspsedtime) {
-		if (this.game.player.isColliding(this))
-		{
-			this.game.player.shot = false;
-			this.game.isLevelComp = true;
-		}
-	}
-}
-
 class GunBlock extends GameObject {
 	/**
 	 * @param {number} x
@@ -1021,38 +1134,8 @@ class GunBlock extends GameObject {
 	 */
 	constructor(x, y) {
 		super(32, 32, x, y);
+		this.image.src = '/images/gunBlock.png';
 
-	}
-}
-
-class Gold extends GameObject {
-	/**
-	 * @param {number} x
-	 * @param {number} y
-	 * @param {Game} [game]
-	 */
-	constructor(x, y, game) {
-		super(16, 16, x, y)
-		this.game = game
-		this.got = false
-		this.image.src = `/images/gold.png`;
-
-	}
-
-	update(elaspsedtime) {
-		if(this.got) return
-
-		if(game.player.isColliding(this))
-		{
-			this.game.money += 1;
-			this.got = true
-		}
-	}
-
-	render() {
-		if(this.got) return
-
-		super.render();
 	}
 }
 
@@ -1243,13 +1326,60 @@ class Blood extends GameObject {
 	}
 }
 
+class Trap extends GameObject {
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {Game} game
+	 */
+	constructor(x, y, game) {
+		super(32, 32, x, y)
+		this.hasTrapped = false;
+		this.game = game;
+		this.image.src = '/images/trap.png'
+	}
+}
+
+class Gold extends GameObject {
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {Game} [game]
+	 */
+	constructor(x, y, game) {
+		super(16, 16, x, y)
+		this.game = game
+		this.got = false
+		this.image.src = `/images/gold.png`;
+
+	}
+
+	update(elaspsedtime) {
+		if(this.got) return
+
+		if(this.game.player.isColliding(this))
+		{
+			this.game.money += 1;
+			this.got = true
+		}
+	}
+
+	render() {
+		if(this.got) return
+
+		super.render();
+	}
+}
+
 let blood = [];
 let bullets = [];
 let EBullets = [];
 let bombs = [];
+let back = new Image();
+let allB = [...blood, ...bullets, ...EBullets, ...bombs];
+back.src = "/images/background.png";
 let game = new Game(EBullets, bullets, blood, bombs);
-game.start();
-let BMan = new BulletMan(game, bullets, EBullets, game.gunBlocks, bombs);
+game.init();
 
 
 let currentTime = 0;
@@ -1257,34 +1387,50 @@ let currentTime = 0;
  * @param {number} timestamp
  */
 function gameLoop(timestamp) {
-	if(game.gameOver) return
 	if(game.isLevelComp) {
+		bullets.forEach((b) => {
+			b.dead = true
+		})
+		EBullets.forEach((b) => {
+			b.dead = true
+		})
+		blood.forEach((b) => {
+			b.dead = true
+		})
+		bombs.forEach((b) => {
+			b.dead = true
+		})
 		game.nextLevel();
 	}
-	
+	if(game.isLevelBack) {
+		bullets.forEach((b) => {
+			b.dead = true
+		})
+		EBullets.forEach((b) => {
+			b.dead = true
+		})
+		blood.forEach((b) => {
+			b.dead = true
+		})
+		bombs.forEach((b) => {
+			b.dead = true
+		})
+		game.lastLevel();
+	}
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	let elaspsedtime = timestamp - currentTime;
 	currentTime = timestamp;
-	console.log(currentTime/1000);
+	ctx.drawImage(back, 0, 0);
+	allB = [...blood, ...bullets, ...EBullets, ...bombs];
+	allB.forEach((B) => {
+		B.update(elaspsedtime);
+		B.render();
+	})
 	game.gameObjects.forEach((o) => {
 		o.update(elaspsedtime);
 		o.render();
 	});
-	game.gameObjects = [
-		...game.monsters,
-		...game.walls,		
-		...game.bullets, 
-		...game.EBullets,
-		...game.bombs,
-		game.player,
-		...game.keys, 
-		...game.bosses,
-		game.goal, 
-		...game.gold,
-		...game.gunBlocks,
-		...game.blood
-		];
-	BMan.update(elaspsedtime);
+	game.update(elaspsedtime);
 	game.render();
-	if(!game.gameOver) requestAnimationFrame(gameLoop);
+	requestAnimationFrame(gameLoop);
 }

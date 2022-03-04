@@ -11,11 +11,23 @@ body {
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
+	font-family: font;
+	
 }
 
 #game-canvas {
 	width: 1400;
 	height: 800;
-	background-color: rgb(0, 0, 0);
+	background-color: black;
 	border: solid 10px rgb(255, 0, 0);
+}
+
+@font-face {
+	font-family: font;
+	src: url("/fonts/EgorycastlePersonal.ttf");
+}
+
+@font-face {
+	font-family: deez;
+	src: url("/fonts/LIVINGBY.TTF");
 }
