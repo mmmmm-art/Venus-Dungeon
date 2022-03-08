@@ -1,7 +1,7 @@
 //@ts-check
 import { GameObject, Location } from "./game-objects/game-object.js";
 import { canvas, ctx } from "./canvas.js";
-import { level1, level10, level11, level12, level2, level3, level4, level5, level6, level7, level8, level9 } from "./levels.js";
+import { level1,level2, level3, level4, level5, level6, level7} from "./levels.js";
 import { StartScene } from "./scenes/start.js";
 import { GameOverScene } from "./scenes/game-over.js";
 import { GameWonScene } from "./scenes/game-won.js";
@@ -33,7 +33,7 @@ export class Game {
 		this.gameOver = false;
 		this.isLevelComp = false;
 		this.isLevelBack = false;
-		this.levels = [level1, level2, level3, level4, level5, level6, level7, level8, level9, level10, level11, level12];
+		this.levels = [level1];
 		this.currentLevel = 0;
 		this.money = 0;
 		this.gameObjects = [];
@@ -42,16 +42,16 @@ export class Game {
 
 	}
 
-	init () {
-		let begin = new StartScene(this)
-		this.gameObjects = [begin];
-	}
+	init() {
+        let begin = new StartScene(this);
+        this.gameObjects = [begin];
+        requestAnimationFrame(gameLoop);
+    }
 	reset() {
 		this.EBullets = EBullets
 		this.bullets = bullets;
 		this.bombs = bombs;
 		this.blood = blood;
-		this.player = undefined;
 		this.walls = [];
 		this.monsters = [];
 		this.keys = [];
@@ -64,6 +64,7 @@ export class Game {
 		this.isLevelComp = false;
 		this.isLevelBack = false;
 		this.traps = [];
+		this.player = undefined;
 	}
 	GameOver() {
 		this.gameOver = true;
@@ -76,11 +77,10 @@ export class Game {
 		this.gameObjects = [won];
 	}
 	Start() {
-		this.musicDisk.init();
-		this.reset();
-		this.loadLevel();
-		requestAnimationFrame(gameLoop)
-	}
+        this.musicDisk.init();
+        this.reset();
+        this.loadLevel();
+    }
 	nextLevel() {
 		this.currentLevel ++;
 		this.reset();
@@ -97,7 +97,7 @@ export class Game {
 		let monsterCoords = [];
 		let playerCoords = { x: 0, y: 0 };
 		let goalCoords = { x: 0, y: 0 };
-		let goalBCoords = { x: -200, y: -200 };
+		let goalBCoords = { x: -100, y: -100 };
 		
 		level.forEach((row, idx) => {
 			for (let col = 0; col < row.length; col++) {
@@ -161,18 +161,20 @@ export class Game {
 			...this.bullets, 
 			...this.EBullets,
 			...this.bombs,
-			this.player,
 			...this.keys, 
 			...this.bosses,
 			this.goal, 
+			this.goalB,
 			...this.gold,
 			...this.gunBlocks,
 			...this.blood,
-			...this.traps
+			...this.traps,
+			this.player
 			];
 	}
 
 	update(elaspsedtime) {
+		if (!this.player) return
 		let time2Shoot1 = this.lastShot >= 0.2;
 		let time2Shoot2 = this.lastShot >= 0.7;
 		let time2Shoot3 = this.lastShot >= 0;
@@ -328,10 +330,10 @@ export class Game {
 			let d1 = 0.3125 * 100
 			if(time2Shoot2)
 			{
-			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, 1, 0, 2000, this, d1, d2, 6, 6));
-			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, 0, 1, 2000, this, d1, d2, 6, 6));
-			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, -1, 0, 2000, this, d1, d2, 6, 6));
-			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, 0, -1, 2000, this, d1, d2, 6, 6));
+			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, 1, 0, 2000, this, d1, d2, 3, 3));
+			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, 0, 1, 2000, this, d1, d2, 3, 3));
+			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, -1, 0, 2000, this, d1, d2, 3, 3));
+			this.EBullets.push(new EnemyBullet(g.x + g.width / 3, g.y + g.height / 3, 0, -1, 2000, this, d1, d2, 3, 3));
 			this.lastShot = 0;
 			}
 		})
@@ -520,19 +522,6 @@ class Player extends GameObject {
 
 		if (this.isMovingLeft) {
 			this.x -= speed;
-		}
-
-		if (this.x + this.width >= canvas.width) {
-			this.x = canvas.width - this.width;
-		}
-		if (this.x <= 0) {
-			this.x = 0;
-		}
-		if (this.y + this.height >= canvas.height) {
-			this.y = canvas.height - this.height;
-		}
-		if (this.y <= 0) {
-			this.y = 0;
 		}
 
 		this.game.walls.forEach((w) => {
