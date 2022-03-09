@@ -12,7 +12,8 @@ export class StartScene extends GameObject {
         this.game = game
         this.textGrad = ctx.createLinearGradient(0, 0, 0, canvas.height)
         this.textGrad.addColorStop(0, "yellow");
-        this.textGrad.addColorStop(1, "purple");
+        this.textGrad.addColorStop(0.5, "orange");
+        this.textGrad.addColorStop(1, "red");
         canvas.addEventListener(
             "click", 
             () => {
@@ -53,6 +54,41 @@ export class StartScene extends GameObject {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("Arrowkeys to shoot", canvas.width - canvas.width / 4, canvas.height / 2);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = this.textGrad;
+        ctx.font = "50px deez";
+        ctx.textBaseline = "middle";
+        ctx.fillText("1: minigun  cost: 0", 100, 450);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = this.textGrad;
+        ctx.font = "50px deez";
+        ctx.textBaseline = "middle";
+        ctx.fillText("2: shotgun  cost: 10", 100, 500);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = this.textGrad;
+        ctx.font = "50px deez";
+        ctx.textBaseline = "middle";
+        ctx.fillText("3: bombgun  cost: 50", 100, 550);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = this.textGrad;
+        ctx.font = "50px deez";
+        ctx.textBaseline = "middle";
+        ctx.fillText("4: tentical demon  cost: 100", 100, 600);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = this.textGrad;
+        ctx.font = "50px deez";
+        ctx.textBaseline = "middle";
+        ctx.fillText("[ & ] to change color", 1000, 600);
         ctx.restore();
     }
 }

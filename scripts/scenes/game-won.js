@@ -17,6 +17,7 @@ export class GameWonScene extends GameObject {
             "click", 
             () => {
             this.game.gameOver = false;
+            this.game.currentLevel = 0;
             this.game.Start();
         },
         {once: true}

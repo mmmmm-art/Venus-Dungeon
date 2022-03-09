@@ -26,6 +26,7 @@ export class Game {
 		this.monsters = [];
 		this.keys = [];
 		this.gold = [];
+		this.flasks = [];
 		this.gunBlocks = [];
 		this.bosses = [];
 		this.lastShot = 0;
@@ -33,7 +34,7 @@ export class Game {
 		this.gameOver = false;
 		this.isLevelComp = false;
 		this.isLevelBack = false;
-		this.levels = [level1];
+		this.levels = [level1,level2, level3, level4, level5, level6, level7];
 		this.currentLevel = 0;
 		this.money = 0;
 		this.gameObjects = [];
@@ -58,6 +59,7 @@ export class Game {
 		this.gold = [];
 		this.gunBlocks = [];
 		this.bosses = [];
+		this.flasks = [];
 		this.goal = undefined;
 		this.goalB = undefined;
 		this.gameObjects = [];
@@ -84,7 +86,14 @@ export class Game {
 	nextLevel() {
 		this.currentLevel ++;
 		this.reset();
-		this.loadLevel();
+		if(this.currentLevel < this.levels.length) {
+			this.loadLevel();
+		}
+		else {
+			this.musicDisk.teleport();
+			this.GameWon();
+		}
+		
 	}
 	lastLevel() {
 		this.currentLevel -= 1;
@@ -92,7 +101,7 @@ export class Game {
 		this.loadLevel();
 	}
 	loadLevel() {
-
+		if(!this.levels) return
 		let level = this.levels[this.currentLevel]
 		let monsterCoords = [];
 		let playerCoords = { x: 0, y: 0 };
@@ -143,6 +152,9 @@ export class Game {
 					case "t":
 						this.traps.push(new Trap(x, y, this));
 						break
+					case "f":
+						this.flasks.push(new Flask(x, y, this));
+						break
 
 				}
 			}
@@ -169,6 +181,7 @@ export class Game {
 			...this.gunBlocks,
 			...this.blood,
 			...this.traps,
+			...this.flasks,
 			this.player
 			];
 	}
@@ -580,6 +593,14 @@ class Player extends GameObject {
 			}
 		});
 
+		this.game.flasks.filter(f => !f.isPicked).forEach((f) => {
+			if(f.isColliding(this)) {
+				this.game.player.health += 250
+				this.game.player.healthX -= 125;
+				f.isPicked = true;
+			}
+		})
+
 		super.update(elaspsedtime);
 
 		ctx.save();
@@ -915,11 +936,6 @@ class Goal extends GameObject {
 			this.game.musicDisk.teleport();
 			this.game.player.shot = false;
 			this.game.isLevelComp = true;
-		}
-		else if (this.game.player.isColliding(this) && this.game.currentLevel > this.game.levels.length)
-		{
-			this.game.musicDisk.teleport();
-			this.game.GameWon();
 		}
 	}
 }
@@ -1360,6 +1376,28 @@ class Gold extends GameObject {
 	}
 }
 
+class Flask extends GameObject {
+	/**
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {Game} game
+	 */
+	constructor(x, y, game) {
+	super(16, 16, x, y)
+	this.game = game
+
+	this.isPicked = false;
+	this.image.src = `/images/health.png`;
+	}
+
+	render() {
+		console.log(this.isPicked)
+		if(this.isPicked) return
+		super.render();
+	}
+
+}
+
 let blood = [];
 let bullets = [];
 let EBullets = [];
@@ -1419,6 +1457,7 @@ function gameLoop(timestamp) {
 		o.update(elaspsedtime);
 		o.render();
 	});
+	console.log()
 	game.update(elaspsedtime);
 	game.render();
 	requestAnimationFrame(gameLoop);
