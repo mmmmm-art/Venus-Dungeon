@@ -8,7 +8,7 @@ export class GameObject {
 		this.width = w;
 		this.height = h;
         this.image = new Image();
-        this.image.src = `/images/background.png`;
+        this.image.src = `images/background.png`;
         this.lastLocation = new Location(this.x, this.y);
 	}
 

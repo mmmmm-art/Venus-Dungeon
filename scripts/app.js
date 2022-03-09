@@ -633,7 +633,7 @@ class Monster extends GameObject {
 		super(32, 32, x, y);
 		this.game = game
 		this.baseSpeed = 2;
-		this.image.src = `/images/monster.png`;
+		this.image.src = `images/monster.png`;
 		this.senseDis = 150;
 		this.isLastMoveCollide = false;
 		this.isDead = false
@@ -784,7 +784,7 @@ class Boss extends GameObject {
 		super(32, 32, x, y)
 		this.game = game
 		this.baseSpeed = 3;
-		this.image.src = `/images/boss.png`;
+		this.image.src = `images/boss.png`;
 		this.senseDis = 150;
 		this.isLastMoveCollide = false;
 		this.isDead = false
@@ -869,7 +869,7 @@ class Wall extends GameObject {
 	 */
 	constructor(x, y, w, h) {
 		super(w, h, x, y);
-		this.image.src = `/images/block.png`;
+		this.image.src = `images/block.png`;
 	}
 }
 
@@ -881,7 +881,7 @@ class Key extends GameObject {
 	constructor(x, y) {
 		super(16, 10, x, y);
 		this.isPicked = false;
-		this.image.src = `/images/key.png`;
+		this.image.src = `images/key.png`;
 	}
 
 	render() {
@@ -907,7 +907,7 @@ class Door extends GameObject {
 		let addX = isVertical ? x : x - 16;
 		let addY = isVertical ? y - 16 : y;
 		super(width, height, addX, addY);
-		this.image.src = `/images/door.png`;
+		this.image.src = `images/door.png`;
 		this.isOpen = false;
 		this.isLocked = true;
 	}
@@ -927,7 +927,7 @@ class Goal extends GameObject {
 	constructor(x, y, game) {
 		super(32, 32, x, y)
 		this.game = game
-		this.image.src = `/images/goal.png`;
+		this.image.src = `images/goal.png`;
 	}
 
 	update(elaspsedtime) {
@@ -950,7 +950,7 @@ class GoalBack extends GameObject {
 	 constructor(x, y, game, id) {
 		super(32, 32, x, y)
 		this.game = game
-		this.image.src = `/images/goal2.png`;
+		this.image.src = `images/goal2.png`;
 		this.isDelayed = id
 	}
 
@@ -979,7 +979,7 @@ class Bullet extends GameObject {
 		super(10, 10, x, y);
 		this.originalX = x;
 		this.originalY = y;
-		this.image.src = `/images/goodBullet.png`;
+		this.image.src = `images/goodBullet.png`;
 		this.game = game;
 		this.movement = {
 			x: {
@@ -1067,7 +1067,7 @@ class EnemyBullet extends GameObject {
 		this.originalY =  y;
 		this.d1 = d1;
 		this.d2 = d2;
-		this.image.src = `/images/badBullet.png`;
+		this.image.src = `images/badBullet.png`;
 		this.game = game;
 		this.movement = {
 			x: {
@@ -1139,7 +1139,7 @@ class GunBlock extends GameObject {
 	 */
 	constructor(x, y) {
 		super(32, 32, x, y);
-		this.image.src = '/images/gunBlock.png';
+		this.image.src = 'images/gunBlock.png';
 
 	}
 }
@@ -1157,7 +1157,7 @@ class Bomb extends GameObject {
 		this.originalX =  game.player.x + game.player.width / 3;
 		this.originalY =  game.player.y + game.player.height / 3;
 		this.bullets = bullets
-		this.image.src = `/images/bomb.png`;
+		this.image.src = `images/bomb.png`;
 		this.game = game;
 		this.movement = {
 			x: {
@@ -1284,7 +1284,7 @@ class Blood extends GameObject {
 		super(10, 10, x, y)
 		this.originalX =  x
 		this.originalY =  y
-		this.image.src = `/images/blood.png`;
+		this.image.src = `images/blood.png`;
 		this.game = game;
 		this.movement = {
 			x: {
@@ -1341,7 +1341,7 @@ class Trap extends GameObject {
 		super(32, 32, x, y)
 		this.hasTrapped = false;
 		this.game = game;
-		this.image.src = '/images/trap.png'
+		this.image.src = 'images/trap.png'
 	}
 }
 
@@ -1355,7 +1355,7 @@ class Gold extends GameObject {
 		super(16, 16, x, y)
 		this.game = game
 		this.got = false
-		this.image.src = `/images/gold.png`;
+		this.image.src = `images/gold.png`;
 
 	}
 
@@ -1387,7 +1387,7 @@ class Flask extends GameObject {
 	this.game = game
 
 	this.isPicked = false;
-	this.image.src = `/images/health.png`;
+	this.image.src = `images/health.png`;
 	}
 
 	render() {
@@ -1404,7 +1404,7 @@ let EBullets = [];
 let bombs = [];
 let back = new Image();
 let allB = [...blood, ...bullets, ...EBullets, ...bombs];
-back.src = "/images/background.png";
+back.src = "images/background.png";
 let game = new Game(EBullets, bullets, blood, bombs);
 game.init();
 
