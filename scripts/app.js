@@ -1444,6 +1444,20 @@ function gameLoop(timestamp) {
 		})
 		game.lastLevel();
 	}
+	if(game.gameOver) {
+		bullets.forEach((b) => {
+			b.dead = true
+		})
+		EBullets.forEach((b) => {
+			b.dead = true
+		})
+		blood.forEach((b) => {
+			b.dead = true
+		})
+		bombs.forEach((b) => {
+			b.dead = true
+		})
+	}
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	let elaspsedtime = timestamp - currentTime;
 	currentTime = timestamp;

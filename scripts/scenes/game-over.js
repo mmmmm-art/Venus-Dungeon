@@ -12,12 +12,13 @@ export class GameOverScene extends GameObject {
         this.game = game
         this.textGrad = ctx.createLinearGradient(0, 0, 0, canvas.height)
         this.textGrad.addColorStop(0, "red");
-        this.textGrad.addColorStop(1, "black");
+        this.textGrad.addColorStop(1, "yellow");
         canvas.addEventListener(
             "click", 
             () => {
             this.game.gameOver = false;
             this.game.currentLevel = 0;
+            this.game.money = 0;
             this.game.Start();
         },
         {once: true}
@@ -48,6 +49,41 @@ export class GameOverScene extends GameObject {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(`Levels completed: ${this.game.currentLevel}`, canvas.width / 2, canvas.height / 2);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = this.textGrad;
+        ctx.font = "50px deez";
+        ctx.textBaseline = "middle";
+        ctx.fillText("1: minigun  cost: 0", 50, 450);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = this.textGrad;
+        ctx.font = "50px deez";
+        ctx.textBaseline = "middle";
+        ctx.fillText("2: shotgun  cost: 10", 50, 500);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = this.textGrad;
+        ctx.font = "50px deez";
+        ctx.textBaseline = "middle";
+        ctx.fillText("3: bombgun  cost: 50", 50, 550);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = this.textGrad;
+        ctx.font = "50px deez";
+        ctx.textBaseline = "middle";
+        ctx.fillText("4: tentical demon  cost: 100", 50, 600);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = this.textGrad;
+        ctx.font = "50px deez";
+        ctx.textBaseline = "middle";
+        ctx.fillText("[ & ] to change color", 1000, 600);
         ctx.restore();
     }
 }
