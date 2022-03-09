@@ -24,10 +24,10 @@ body {
 
 @font-face {
 	font-family: font;
-	src: url("/fonts/EgorycastlePersonal.ttf");
+	src: url("fonts/EgorycastlePersonal.ttf");
 }
 
 @font-face {
 	font-family: deez;
-	src: url("/fonts/LIVINGBY.TTF");
+	src: url("fonts/LIVINGBY.TTF");
 }
