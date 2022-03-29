@@ -1,7 +1,7 @@
 //@ts-check
 import { GameObject, Location } from "./game-objects/game-object.js";
 import { canvas, ctx } from "./canvas.js";
-import { level1,level2, level3, level4, level5, level6, level7} from "./levels.js";
+import { level1,level2, level3, level4, level5, level6, level7, Thad, level12} from "./levels.js";
 import { StartScene } from "./scenes/start.js";
 import { GameOverScene } from "./scenes/game-over.js";
 import { GameWonScene } from "./scenes/game-won.js";
@@ -28,18 +28,25 @@ export class Game {
 		this.gold = [];
 		this.flasks = [];
 		this.gunBlocks = [];
+		this.archers = [];
 		this.bosses = [];
 		this.lastShot = 0;
 		this.goal = undefined;
 		this.gameOver = false;
 		this.isLevelComp = false;
 		this.isLevelBack = false;
-		this.levels = [level1,level2, level3, level4, level5, level6, level7];
+		this.levels = [level12,level1,level2, level3, level4, level5, level6, level7, Thad];
 		this.currentLevel = 0;
-		this.money = 0;
+		this.money = 100000;
 		this.gameObjects = [];
 		this.traps = [];
 		this.musicDisk = new AudioPlayer
+		this.XD = -1;
+		this.YD = -1;
+		this.SX = 0;
+		this.SY = 0;
+		this.mx = 0;
+		this.my = 0;
 
 	}
 
@@ -55,6 +62,7 @@ export class Game {
 		this.blood = blood;
 		this.walls = [];
 		this.monsters = [];
+		this.archers = [];
 		this.keys = [];
 		this.gold = [];
 		this.gunBlocks = [];
@@ -155,6 +163,9 @@ export class Game {
 					case "f":
 						this.flasks.push(new Flask(x, y, this));
 						break
+					case "A":
+						this.archers.push(new Archer(this, x, y))
+						break
 
 				}
 			}
@@ -177,6 +188,7 @@ export class Game {
 			...this.bosses,
 			this.goal, 
 			this.goalB,
+			...this.archers,
 			...this.gold,
 			...this.gunBlocks,
 			...this.blood,
@@ -186,123 +198,85 @@ export class Game {
 			];
 	}
 
+	/**
+	 * @param {number} elaspsedtime
+	 */
 	update(elaspsedtime) {
 		if (!this.player) return
+		
 		let time2Shoot1 = this.lastShot >= 0.2;
 		let time2Shoot2 = this.lastShot >= 0.7;
 		let time2Shoot3 = this.lastShot >= 0;
 		let time2Shoot4 = this.lastShot > 0.7;
-		let shot = this.player.shootR || this.player.shootL || this.player.shootU || this.player.shootD;
 		this.lastShot += elaspsedtime / 1000;
-		if(this.player.shootR && this.player.shotType1 && time2Shoot1)
+		//slope code
+		let xDis = game.player.x - this.mx;
+		let yDis = game.player.y - this.my;
+		
+		if(this.player.x > this.mx && this.player.y > this.my) 
 		{
-			this.bullets.push(new Bullet(1, 0, 300, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.SX = (xDis / yDis) * 1;
+			this.SY = (yDis / xDis) * 1;
+		}
+		if(this.player.x < this.mx && this.player.y < this.my) 
+		{
+			this.SX = (xDis / yDis) * -1;
+			this.SY = (yDis / xDis) * -1;
+		}
+		if(this.player.x > this.mx && this.player.y < this.my) 
+		{
+			this.SX = (xDis / yDis) * -1;
+			this.SY = (yDis / xDis) * 1;
+		}
+		if(this.player.x < this.mx && this.player.y > this.my) 
+		{
+			this.SX = (xDis / yDis) * 1;
+			this.SY = (yDis / xDis) * -1;
+		}
+		//end
+		console.log(this.SX, this.SY);
+		//bullets
+		if(this.player.shooty && this.player.shotType1 && time2Shoot1) {
+			this.bullets.push(new Bullet(this.XD, this.YD, 300, this.SY, this.SX, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
 			this.lastShot = 0;
 		}
-		else if(this.player.shootL && this.player.shotType1 && time2Shoot1)
-		{
-			this.bullets.push(new Bullet(-1, 0, 300, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+		if(this.player.shooty && this.player.shotType4 && time2Shoot4) {
+			this.bombs.push(new Bomb (this.XD, this.YD, 150, this.SX, this.SY, this, bullets));
 			this.lastShot = 0;
 		}
-		else if(this.player.shootU && this.player.shotType1 && time2Shoot1)
-		{
-			this.bullets.push(new Bullet(0, -1, 300, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.lastShot = 0;
-		}
-		else if(this.player.shootD && this.player.shotType1 && time2Shoot1)
-		{
-			this.bullets.push(new Bullet(0, 1, 300, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.lastShot = 0;
-		}
-
-		if(this.player.shootR && this.player.shotType4 && time2Shoot4)
-		{
-			this.bombs.push(new Bomb(1, 0, 300, this, bullets));
-			this.lastShot = 0;
-		}
-		else if(this.player.shootL && this.player.shotType4 && time2Shoot4)
-		{
-			this.bombs.push(new Bomb(-1, 0, 300, this, bullets));
-			this.lastShot = 0;
-		}
-		else if(this.player.shootU && this.player.shotType4 && time2Shoot4)
-		{
-			this.bombs.push(new Bomb(0, -1, 300, this, bullets));
-			this.lastShot = 0;
-		}
-		else if(this.player.shootD && this.player.shotType4 && time2Shoot4)
-		{
-			this.bombs.push(new Bomb(0, 1, 300, this, bullets));
-			this.lastShot = 0;
+		if(this.player.shooty && this.player.shotType2 && time2Shoot2) {
 		}
 
-		if(this.player.shootR && this.player.shotType2 && time2Shoot2)
+		if(this.player.shooty && this.player.shotType3 && time2Shoot3)
 		{
-			this.bullets.push(new Bullet(1, -1, 150, 1.5, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, 1, 150, 1.5, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, -1, 150, 1, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, 1, 150, 1, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, 0, 150, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.lastShot = 0;
-		}
-		else if(this.player.shootL && this.player.shotType2 && time2Shoot2)
-		{
-			this.bullets.push(new Bullet(-1, -1, 150, 1.5, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(-1, 1, 150, 1.5, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(-1, -1, 150, 1, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(-1, 1, 150, 1, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(-1, 0, 150, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.lastShot = 0;
-		}
-		else if(this.player.shootU && this.player.shotType2 && time2Shoot2)
-		{
-			this.bullets.push(new Bullet(-1, -1, 150, 6, 1, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, -1, 150, 6, 1, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(-1, -1, 150, 6, 1.5, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, -1, 150, 6, 1.5, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(0, -1, 150, 6, 1.5, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.lastShot = 0;
-		}
-		else if(this.player.shootD && this.player.shotType2 && time2Shoot2)
-		{
-			this.bullets.push(new Bullet(-1, 1, 150, 6, 1, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, 1, 150, 6, 1, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(-1, 1, 150, 6, 1.5, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, 1, 150, 6, 1.5, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(0, 1, 150, 6, 1.5, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.lastShot = 0;
-		}
-
-		if(shot && this.player.shotType3 && time2Shoot3)
-		{
-			this.bullets.push(new Bullet(-1, -1, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, 1, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, 0, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(0, 1, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(-1, 0, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(0, -1, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(-1, 1, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, -1, 200, 6, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(-1, -1, 200, 12, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(-1, 1, 200, 6, 12, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, -1, 200, 12, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, 1, 200, 6, 12, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(-1, -1, 200, 3, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(-1, 1, 200, 6, 3, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, -1, 200, 3, 6, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
-			this.bullets.push(new Bullet(1, 1, 200, 6, 3, this, this.player.x + this.player.width / 3, this.player.y + this.player.width / 3));
+			this.bombs.push(new Bomb(1, 1, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(1, -1, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(-1, 1, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(-1, -1, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(0, 1, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(0, -1, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(-1, 0, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(1, 0, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(-1, -1, 300, 12, 6, this, bullets));
+			this.bombs.push(new Bomb(-1, 1, 300, 6, 12, this, bullets));
+			this.bombs.push(new Bomb(1, -1, 300, 12, 6, this, bullets));
+			this.bombs.push(new Bomb(1, 1, 300, 6, 12, this, bullets));
+			this.bombs.push(new Bomb(-1, -1, 300, 3, 6, this, bullets));
+			this.bombs.push(new Bomb(-1, 1, 300, 6, 3, this, bullets));
+			this.bombs.push(new Bomb(1, -1, 300, 3, 6, this, bullets));
+			this.bombs.push(new Bomb(1, 1, 300, 6, 3, this, bullets));
 		}
 
 		if(this.player.shoot && !this.player.shot)
 		{
-			this.bombs.push(new Bomb(1, 1, 300, this, bullets));
-			this.bombs.push(new Bomb(1, -1, 300, this, bullets));
-			this.bombs.push(new Bomb(-1, 1, 300, this, bullets));
-			this.bombs.push(new Bomb(-1, -1, 300, this, bullets));
-			this.bombs.push(new Bomb(0, 1, 300, this, bullets));
-			this.bombs.push(new Bomb(0, -1, 300, this, bullets));
-			this.bombs.push(new Bomb(-1, 0, 300, this, bullets));
-			this.bombs.push(new Bomb(1, 0, 300, this, bullets));
+			this.bombs.push(new Bomb(1, 1, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(1, -1, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(-1, 1, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(-1, -1, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(0, 1, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(0, -1, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(-1, 0, 300, 6, 6, this, bullets));
+			this.bombs.push(new Bomb(1, 0, 300, 6, 6, this, bullets));
 			this.player.shot = true;
 		}
 
@@ -337,6 +311,12 @@ export class Game {
 				this.EBullets.push(new EnemyBullet(b.x + b.width / 3, b.y + b.height / 3, 1, -1, 150, this, 0.3125, 0.15625, 2, 1));
 			}
 		})
+
+		this.archers.forEach((a) => {
+			if(time2Shoot2 && a.fire) {
+				this.EBullets.push(new EnemyBullet(a.x + a.width / 3, a.y + a.height / 3, a.XD, a.YD, 3000, this, 1.25, 0.625, a.SX, a.SY));
+			}
+		});
 
 		this.gunBlocks.forEach((g) => {
 			let d2 = 0.15625 * 100
@@ -389,6 +369,7 @@ class Player extends GameObject {
 		this.shootL = false;
 		this.shootD = false;
 		this.shootU = false;
+		this.shooty = false;
 		this.shotType1 = true;
 		this.shotType2 = false;
 		this.shotType3 = false;
@@ -414,6 +395,18 @@ class Player extends GameObject {
 		window.addEventListener("keyup", (e) => {
 			// console.log(e.key);
 			this.toggleMovement(e.key, false);
+		});
+
+		canvas.addEventListener("mousedown", (m) => {
+			this.shooty = true;
+		});
+
+		canvas.addEventListener("mouseup", (m) => {
+			this.shooty = false;
+		});
+		canvas.addEventListener("mousemove", (m) => {
+			this.game.mx = m.offsetX;
+			this.game.my = m.offsetY;
 		});
 	}
 
@@ -773,6 +766,186 @@ class Monster extends GameObject {
 	}
 }
 
+class Archer extends GameObject {
+	/**
+	 * @param {Game} game
+	 * @param {Number} x
+	 * @param {Number} y
+	 */
+	constructor(game, x, y) {
+		super(32, 32, x, y);
+		this.game = game
+		this.baseSpeed = 2;
+		this.image.src = `images/monster.png`;
+		this.senseDis = 300;
+		this.isLastMoveCollide = false;
+		this.isDead = false
+		this.movement = {
+			timeSinceLastUpdate: 0,
+			timeToNextUpdate: 1000,
+			x: {
+				direction: 0,
+				speed: this.baseSpeed,
+			},
+			y: {
+				direction: 0,
+				speed: this.baseSpeed,
+			},
+		};
+		this.health = 10;
+		this.shotDis = 50;
+		this.fire = false;
+		this.XD = 0;
+		this.YD = 0;
+		this.SX = 0;
+		this.SY = 0;
+	}
+
+	/**
+	 * @param {number} elaspsedtime
+	 */
+	update(elaspsedtime) {
+		if(this.isDead) return
+
+		this.movement.timeSinceLastUpdate += elaspsedtime;
+		if (this.movement.timeSinceLastUpdate >= this.movement.timeToNextUpdate || this.isLastMoveCollide) 
+		{
+			this.movement.x.direction = Math.random() >= 0.5 ? 1 : -1;
+			this.movement.y.direction = Math.random() >= 0.5 ? 1 : -1;
+			this.movement.x.speed = Math.random() * this.baseSpeed;
+			this.movement.y.speed = Math.random() * this.baseSpeed;
+			this.movement.timeToNextUpdate = Math.random() * 1000 + 500;
+			this.movement.timeSinceLastUpdate = 0;
+		}
+		let xDis = game.player.x - this.x;
+		let yDis = game.player.y - this.y;
+
+		if(this.game.player.x > this.x && this.game.player.y > this.y) 
+		{
+			this.SX = (xDis / yDis) * 1;
+			this.SY = (yDis / xDis) * 1;
+		}
+		if(this.game.player.x < this.x && this.game.player.y < this.y) 
+		{
+			this.SX = (xDis / yDis) * -1;
+			this.SY = (yDis / xDis) * -1;
+		}
+		if(this.game.player.x > this.x && this.game.player.y < this.y) 
+		{
+			this.SX = (xDis / yDis) * -1;
+			this.SY = (yDis / xDis) * 1;
+		}
+		if(this.game.player.x < this.x && this.game.player.y > this.y) 
+		{
+			this.SX = (xDis / yDis) * 1;
+			this.SY = (yDis / xDis) * -1;
+		}
+		let insideX = this.game.player.x > this.x - this.senseDis &&  this.game.player.x < this.x + this.senseDis;
+		let insideY = this.game.player.y > this.y - this.senseDis && this.game.player.y < this.y + this.senseDis;
+		let isInside = insideX && insideY;
+
+		
+		if (
+			this.game.player.x > this.x - this.senseDis &&
+			this.game.player.x < this.x &&
+			isInside
+		) {
+			this.movement.x.direction = -1;
+			this.baseSpeed = 5;
+		}
+		if (
+			this.game.player.x < this.x + this.senseDis &&
+			this.game.player.x > this.x &&
+			isInside
+		) {
+			this.movement.x.direction = 1;
+			this.baseSpeed = 5;
+		}
+		if (
+			this.game.player.y > this.y - this.senseDis &&
+			this.game.player.y < this.y &&
+			isInside
+		) {
+			this.movement.y.direction = -1;
+			this.baseSpeed = 5;
+		}
+		if (
+			this.game.player.y < this.y + this.senseDis &&
+			this.game.player.y > this.y &&
+			isInside
+		) {
+			this.movement.y.direction = 1;
+			this.baseSpeed = 5;
+		}
+
+
+
+		if (
+			this.game.player.x > this.x - this.shotDis &&
+			this.game.player.x < this.x &&
+			isInside
+		) {
+			this.movement.x.direction = 0;
+			this.movement.y.direction = 0;
+			this.fire = true;
+		}
+		if (
+			this.game.player.x < this.x + this.shotDis &&
+			this.game.player.x > this.x &&
+			isInside
+		) {
+			this.movement.x.direction = 0;
+			this.movement.y.direction = 0;
+			this.fire = true;
+		}
+		if (
+			this.game.player.y > this.y - this.shotDis &&
+			this.game.player.y < this.y &&
+			isInside
+		) {
+			this.movement.x.direction = 0;
+			this.movement.y.direction = 0;
+			this.fire = true;
+		}
+		else if (
+			this.game.player.y < this.y + this.shotDis &&
+			this.game.player.y > this.y &&
+			isInside
+		) {
+			this.movement.x.direction = 0;
+			this.movement.y.direction = 0;
+			this.fire = true;
+		}
+		else
+		{
+			this.fire = false;
+		}
+
+		this.x += this.movement.x.speed * this.movement.x.direction;
+		this.y += this.movement.y.speed * this.movement.y.direction;
+
+		this.isLastMoveCollide = false;
+		this.game.walls.forEach((w) => {
+			if(w.isOpen) return
+			let safeLocation = this.isColliding(w);
+			if (safeLocation) {
+				this.isLastMoveCollide = true;
+				this.x = safeLocation.x;
+				this.y = safeLocation.y;
+			}
+		});
+		
+
+		super.update(elaspsedtime);
+	}
+
+	render() {
+		if(this.isDead) return
+
+		super.render();
+	}
+}
+
 class Boss extends GameObject {
 	/**
 	 * @param {number} x
@@ -930,6 +1103,9 @@ class Goal extends GameObject {
 		this.image.src = `images/goal.png`;
 	}
 
+	/**
+	 * @param {number} elaspsedtime
+	 */
 	update(elaspsedtime) {
 		if (this.game.player.isColliding(this) && this.game.currentLevel < this.game.levels.length)
 		{
@@ -954,6 +1130,9 @@ class GoalBack extends GameObject {
 		this.isDelayed = id
 	}
 
+	/**
+	 * @param {number} elaspsedtime
+	 */
 	update(elaspsedtime) {
 		if (this.game.player.isColliding(this))
 		{
@@ -995,6 +1174,9 @@ class Bullet extends GameObject {
 		this.distance = dd
 	}
 
+	/**
+	 * @param {number} elaspsedtime
+	 */
 	update(elaspsedtime) {
 		if(this.dead)
 		{
@@ -1089,8 +1271,8 @@ class EnemyBullet extends GameObject {
 	 */
 	update(elaspsedtime) {
 		if(this.dead) return
-		this.x += this.movement.x.speed * this.movement.x.direction;
-		this.y += this.movement.y.speed * this.movement.y.direction;
+		this.x += this.movement.x.speed;
+		this.y += this.movement.y.speed;
 		if(this.x > this.originalX + this.distance)
 		{
 			this.dead = true;
@@ -1151,8 +1333,10 @@ class Bomb extends GameObject {
 	 * @param {number} dd
 	 * @param {Game} game
 	 * @param {Array<Bullet>} bullets
+	 * @param {number} xs
+	 * @param {number} ys
 	 */
-	constructor(xd, yd, dd, game, bullets) {
+	constructor(xd, yd, dd, xs, ys, game, bullets) {
 		super(16, 16, game.player.x + game.player.width / 3, game.player.y + game.player.width / 3)
 		this.originalX =  game.player.x + game.player.width / 3;
 		this.originalY =  game.player.y + game.player.height / 3;
@@ -1162,17 +1346,20 @@ class Bomb extends GameObject {
 		this.movement = {
 			x: {
 				direction: xd,
-				speed: 6,
+				speed: xs,
 			},
 		 	y: {
 				direction: yd,
-		 		speed: 6,
+		 		speed: ys,
 			},
 		};
 		this.dead = false;
 		this.distance = dd
 	}
 
+	/**
+	 * @param {number} elaspsedtime
+	 */
 	update(elaspsedtime) {
 		if(this.dead) return
 		this.x += this.movement.x.speed * this.movement.x.direction;
@@ -1300,6 +1487,9 @@ class Blood extends GameObject {
 		this.distance = dd
 	}
 
+	/**
+	 * @param {number} elaspsedtime
+	 */
 	update(elaspsedtime) {
 		if(this.dead) return
 		this.x += this.movement.x.speed * this.movement.x.direction;
@@ -1359,6 +1549,9 @@ class Gold extends GameObject {
 
 	}
 
+	/**
+	 * @param {number} elaspsedtime
+	 */
 	update(elaspsedtime) {
 		if(this.got) return
 
